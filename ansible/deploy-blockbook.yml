@@ -1,0 +1,92 @@
+---
+- name: Deploy Blockbook with systemd
+  hosts: ranchimall
+  become: yes
+  vars_files:
+    - vars.yml
+  tasks:
+    # - name: Ensure Docker is installed
+    #   apt:
+    #     name: docker.io
+    #     state: present
+    #   become: yes
+
+    # - name: Install Docker SDK for Python
+    #   pip:
+    #     name: docker
+    #     state: present
+    #   become: yes
+
+    - name: Download the tar.gz file
+      get_url:
+        url: https://github.com/ranchimall/blockbook/releases/download/flo-v0.4.0-rm-v2/flo-bin.tar.gz
+        dest: /tmp/flo-bin.tar.gz
+
+    - name: Create directory for extracting the tar.gz file
+      file:
+        path: /tmp/flo-bin
+        state: directory
+
+    - name: Extract the tar.gz file
+      unarchive:
+        src: /tmp/flo-bin.tar.gz
+        dest: /tmp/flo-bin
+        remote_src: yes
+
+    - name: Install backend-flo
+      apt:
+        deb: /tmp/flo-bin/backend-flo_0.15.1.1-satoshilabs-1_amd64.deb
+        state: present
+
+    - name: Install blockbook-flo
+      apt:
+        deb: /tmp/flo-bin/blockbook-flo_0.4.0_amd64.deb
+        state: present
+
+    - name: Start the FLO backend service
+      systemd:
+        name: backend-flo.service
+        state: started
+        enabled: yes
+
+    - name: Start the FLO Blockbook service
+      systemd:
+        name: blockbook-flo.service
+        state: started
+        enabled: yes
+
+    - name: Check the status of FLO backend service
+      command: systemctl status backend-flo.service
+      register: backend_status
+
+    - name: Debug FLO backend service status
+      debug:
+        var: backend_status.stdout_lines
+
+    - name: Check the status of FLO Blockbook service
+      command: systemctl status blockbook-flo.service
+      register: blockbook_status
+
+    - name: Debug FLO Blockbook service status
+      debug:
+        var: blockbook_status.stdout_lines
+
+    - name: Check FLO backend service logs
+      command: tail -f /opt/coins/data/flo/backend/debug.log
+      async: 30
+      poll: 0
+      register: backend_logs
+
+    - name: Debug FLO backend logs
+      debug:
+        var: backend_logs.stdout_lines
+
+    - name: Check FLO Blockbook service logs
+      command: tail -f /opt/coins/blockbook/flo/logs/blockbook.INFO
+      async: 30
+      poll: 0
+      register: blockbook_logs
+
+    - name: Debug FLO Blockbook logs
+      debug:
+        var: blockbook_logs.stdout_lines
