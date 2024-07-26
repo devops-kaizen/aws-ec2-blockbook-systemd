@@ -1,6 +1,6 @@
 ---
 - name: Deploy Blockbook with systemd
-  hosts: ranchimall
+  hosts: blockbook-machine
   become: yes
   vars_files:
     - vars.yml
