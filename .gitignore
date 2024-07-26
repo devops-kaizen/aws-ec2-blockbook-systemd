@@ -7,3 +7,4 @@ ansible/inventory*
 terraform/.terraform*
 terraform/*tfstate*
 scripts/backup/*
+cinema_script
