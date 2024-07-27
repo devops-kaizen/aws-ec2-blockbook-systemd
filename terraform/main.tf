@@ -2,14 +2,19 @@ provider "aws" {
   region = "eu-north-1"
 }
 
-# Create the key pair if it does not exist
+# Data source to check if the key pair exists
+data "aws_key_pair" "existing_key" {
+  key_name = "blockbook_key"
+}
+
+# Conditionally create the key pair if it does not exist
 resource "aws_key_pair" "blockbook_key" {
-  count = length(data.aws_key_pair.existing_key.key_name) == 0 ? 1 : 0
+  count     = length(data.aws_key_pair.existing_key.id) == 0 ? 1 : 0
   key_name   = "blockbook_key"
   public_key = file("../auth/blockbook_key.pub")
 }
 
-# Check if the security group exists
+# Data source to check if the security group exists
 data "aws_security_group" "existing_sg" {
   filter {
     name   = "group-name"
@@ -17,9 +22,9 @@ data "aws_security_group" "existing_sg" {
   }
 }
 
-# Create the security group if it does not exist
+# Conditionally create the security group if it does not exist
 resource "aws_security_group" "blockbook_sg" {
-  count       = length(data.aws_security_group.existing_sg.ids) == 0 ? 1 : 0
+  count       = length(data.aws_security_group.existing_sg.id) == 0 ? 1 : 0
   name        = "blockbook_sg"
   description = "Security group for Blockbook"
 
@@ -102,17 +107,16 @@ resource "aws_instance" "blockbook_server" {
   ami           = "ami-07c8c1b18ca66bb07"
   instance_type = "t3.micro"
 
-  key_name = length(data.aws_key_pair.existing_key.key_name) > 0 ? data.aws_key_pair.existing_key.key_name : aws_key_pair.blockbook_key[0].key_name
+  key_name = length(data.aws_key_pair.existing_key.id) > 0 ? data.aws_key_pair.existing_key.key_name : aws_key_pair.blockbook_key[0].key_name
 
   associate_public_ip_address = true
 
-  vpc_security_group_ids = length(data.aws_security_group.existing_sg.ids) > 0 ? [data.aws_security_group.existing_sg.id] : [aws_security_group.blockbook_sg[0].id]
+  vpc_security_group_ids = length(data.aws_security_group.existing_sg.id) > 0 ? [data.aws_security_group.existing_sg.id] : [aws_security_group.blockbook_sg[0].id]
 
   tags = {
     Name = "BlockbookServer"
   }
 
-  # Ensure the instance depends on the security group
   depends_on = [aws_security_group.blockbook_sg]
 }
 
